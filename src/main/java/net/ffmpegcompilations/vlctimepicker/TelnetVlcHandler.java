@@ -35,18 +35,56 @@ public class TelnetVlcHandler {
     public boolean isPlayingMedia() throws IOException {
 
         out.println("is_playing");
-        String response = in.readLine();
-        if(response.equals("> 1"))
+        String response = trim(in.readLine());
+        if(response.equals("1"))
             return true;
         return false;
+    }
+
+    private String trim(String s){
+
+        s = s.replace(" ", "");
+        s = s.replace(">", "");
+        return s;
     }
 
     public int getPlayingTimeInSeconds() throws IOException {
 
         int seconds = 0;
         out.println("get_time");
-        String response = in.readLine().substring(2);
+        String response = trim(in.readLine());
         seconds = Integer.parseInt(response);
         return seconds;
+    }
+
+    public int getPlayingTimeInMiliseconds() throws IOException, InterruptedException {
+
+        return getPlayingTimeInMiliseconds(50);
+    }
+
+    public int getPlayingTimeInMiliseconds(int stepSizeInMs) throws IOException, InterruptedException {
+
+        int currentSeconds;
+        int offsetToNextFullSecondInMs = 0;
+
+        do {
+            currentSeconds = getPlayingTimeInSeconds();
+            out.println("play");
+            Thread.sleep(stepSizeInMs);
+            out.println("pause");
+
+            if(getPlayingTimeInSeconds() != currentSeconds)
+                break;
+            offsetToNextFullSecondInMs += stepSizeInMs;
+        } while (true);
+
+        int totalPos = currentSeconds * 1000 - offsetToNextFullSecondInMs;
+
+        out.println("seek " + (currentSeconds - 1));
+        out.println("play");
+        Thread.sleep(1000 - offsetToNextFullSecondInMs);
+        out.println("pause");
+
+        return totalPos;
     }
 }
